@@ -1,0 +1,49 @@
+projeto/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── br/com/trainer/api/
+│   │   │       ├── config/
+│   │   │       │   ├── CorsConfig.java
+│   │   │       │   ├── SecurityConfig.java
+│   │   │       │   ├── SwaggerConfig.java
+│   │   │       │   └── JwtConfig.java
+│   │   │       ├── controller/
+│   │   │       │   ├── AgendamentoController.java
+│   │   │       │   ├── AlunoController.java
+│   │   │       │   └── AuthController.java
+│   │   │       ├── dto/
+│   │   │       │   ├── AgendamentoDTO.java
+│   │   │       │   ├── AlunoDTO.java
+│   │   │       │   ├── LoginDTO.java
+│   │   │       │   └── TokenDTO.java
+│   │   │       ├── entity/
+│   │   │       │   ├── Agendamento.java
+│   │   │       │   ├── Aluno.java
+│   │   │       │   └── Usuario.java
+│   │   │       ├── exception/
+│   │   │       │   ├── GlobalExceptionHandler.java
+│   │   │       │   └── ResourceNotFoundException.java
+│   │   │       ├── repository/
+│   │   │       │   ├── AgendamentoRepository.java
+│   │   │       │   ├── AlunoRepository.java
+│   │   │       │   └── UsuarioRepository.java
+│   │   │       ├── security/
+│   │   │       │   ├── JwtTokenProvider.java
+│   │   │       │   └── UserDetailsServiceImpl.java
+│   │   │       ├── service/
+│   │   │       │   ├── AgendamentoService.java
+│   │   │       │   ├── AlunoService.java
+│   │   │       │   └── AuthService.java
+│   │   │       └── ApiApplication.java
+│   │   └── resources/
+│   │       ├── static/
+│   │       │   ├── css/
+│   │       │   │   └── styles.css
+│   │       │   ├── js/
+│   │       │   │   ├── agenda.js
+│   │       │   │   ├── alunos.js
+│   │       │   │   └── auth.js
+│   │       │   └── index.html
+│   │       └── application.properties
+└── pom.xml
