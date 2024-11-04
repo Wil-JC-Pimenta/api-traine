@@ -16,10 +16,4 @@ public class Aluno {
 
     @OneToMany(mappedBy = "aluno", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Agendamento> agendamentos;
-
-    // Se você precisar de um identificador diferente do CPF, pode adicionar um campo ID
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    // Não é necessário implementar um getter para o ID, pois o @Data do Lombok faz isso automaticamente.
 }

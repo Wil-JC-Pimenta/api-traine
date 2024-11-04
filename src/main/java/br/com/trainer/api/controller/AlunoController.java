@@ -1,8 +1,5 @@
 package br.com.trainer.api.controller;
 
-<<<<<<< HEAD
-public class AlunoController {
-=======
 import br.com.trainer.api.entity.Aluno;
 import br.com.trainer.api.service.AlunoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,5 +46,4 @@ public class AlunoController {
         alunoService.deletarAluno(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
->>>>>>> c43ab81ec6747deba4e186f4426d6bcc662b0c94
 }

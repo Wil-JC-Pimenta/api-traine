@@ -1,20 +1,32 @@
 package br.com.trainer.api.config;
 
-<<<<<<< HEAD
-public class JwtConfig {
-=======
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
-import lombok.Getter;
+import org.springframework.stereotype.Component;
 
-@Configuration
-@Getter
+@Component
 public class JwtConfig {
+
+    @Value("${jwt.expirationTime}")
+    private long expirationTime;
 
     @Value("${jwt.secret}")
-    private String secretKey;
+    private String secret;
 
-    @Value("${jwt.expiration}")
-    private long expirationTime;
->>>>>>> c43ab81ec6747deba4e186f4426d6bcc662b0c94
+    // getters e setters
+
+    public long getExpirationTime() {
+        return expirationTime;
+    }
+
+    public void setExpirationTime(long expirationTime) {
+        this.expirationTime = expirationTime;
+    }
+
+    public String getSecret() {
+        return secret;
+    }
+
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
 }

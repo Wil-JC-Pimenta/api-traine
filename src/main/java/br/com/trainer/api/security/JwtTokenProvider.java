@@ -4,9 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -18,6 +17,7 @@ public class JwtTokenProvider {
 
     private final String SECRET_KEY = "your_secret_key"; // Use a secure secret key
     private final long VALIDITY_IN_MILLISECONDS = 3600000; // 1 hour
+    private AbstractAuthenticationToken userDetails;
 
     public String createToken(String username) {
         Map<String, Object> claims = new HashMap<>();
@@ -49,7 +49,7 @@ public class JwtTokenProvider {
         return claims.getSubject();
     }
 
-    public UsernamePasswordAuthenticationToken getAuthentication(String token, UserDetails userDetails) {
+    public UsernamePasswordAuthenticationToken getAuthentication(String token) {
         // This method returns an authentication object for the given user details
         return new UsernamePasswordAuthenticationToken(userDetails, token, userDetails.getAuthorities());
     }
