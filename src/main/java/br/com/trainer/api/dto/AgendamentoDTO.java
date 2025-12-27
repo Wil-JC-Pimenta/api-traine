@@ -1,40 +1,34 @@
 package br.com.trainer.api.dto;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 public class AgendamentoDTO {
-    private Long id; // Armazena o ID do agendamento
-    private Long alunoId; // Armazena o ID do aluno
-    private LocalDate data; // Data do agendamento
-    private LocalTime hora; // Hora do agendamento
-    private Double valor; // Valor da aula
-    private String descricao; // Descrição do agendamento
 
-    // Construtor completo com todos os campos
-    public AgendamentoDTO(Long id, Long alunoId, LocalDate data, LocalTime hora, Double valor, String descricao) {
-        this.id = id;
-        this.alunoId = alunoId;
-        this.data = data;
-        this.hora = hora;
-        this.valor = valor;
-        this.descricao = descricao;
-    }
+    private Long id;
+    private String alunoCpf;
+    private LocalDateTime dataHora;
+    private Double valor;
+    private String descricao;
 
-    // Construtor para criação de agendamento sem ID
-    public AgendamentoDTO(Long alunoId, LocalDate data, LocalTime hora, Double valor, String descricao) {
-        this.alunoId = alunoId;
-        this.data = data;
-        this.hora = hora;
-        this.valor = valor;
-        this.descricao = descricao;
-    }
-
-    // Construtor vazio, caso necessário para inicializações básicas
     public AgendamentoDTO() {
     }
 
-    // Getters e Setters
+    public AgendamentoDTO(
+            Long id,
+            String alunoCpf,
+            LocalDateTime dataHora,
+            Double valor,
+            String descricao
+    ) {
+        this.id = id;
+        this.alunoCpf = alunoCpf;
+        this.dataHora = dataHora;
+        this.valor = valor;
+        this.descricao = descricao;
+    }
+
+    // getters e setters
+
     public Long getId() {
         return id;
     }
@@ -43,28 +37,20 @@ public class AgendamentoDTO {
         this.id = id;
     }
 
-    public Long getAlunoId() {
-        return alunoId;
+    public String getAlunoCpf() {
+        return alunoCpf;
     }
 
-    public void setAlunoId(Long alunoId) {
-        this.alunoId = alunoId;
+    public void setAlunoCpf(String alunoCpf) {
+        this.alunoCpf = alunoCpf;
     }
 
-    public LocalDate getData() {
-        return data;
+    public LocalDateTime getDataHora() {
+        return dataHora;
     }
 
-    public void setData(LocalDate data) {
-        this.data = data;
-    }
-
-    public LocalTime getHora() {
-        return hora;
-    }
-
-    public void setHora(LocalTime hora) {
-        this.hora = hora;
+    public void setDataHora(LocalDateTime dataHora) {
+        this.dataHora = dataHora;
     }
 
     public Double getValor() {
