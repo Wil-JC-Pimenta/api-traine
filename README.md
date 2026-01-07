@@ -195,14 +195,7 @@ Segurança e produção
 
 ---
 
-## Observações finais
-
-O repositório contém um backend Spring Boot funcional, com autenticação JWT, persistência via JPA e documentação via OpenAPI. O README reflete o estado atual do código e destaca áreas que merecem correção para robustez e coerência. Se desejar, posso:
-
-- aplicar as correções prioritárias automaticamente (por exemplo, ajustar `AlunoRepository`),
-- criar testes unitários básicos cobrindo as validações, ou
-- abrir um PR com estas mudanças e instruções de revisão.
 
 ---
 
-> Gerado automaticamente a partir da análise do código-fonte do projeto (estruturas, controllers, services, repositories, DTOs, entities, segurança e configuração). Se quiser que eu aplique alguma das correções ou abra PR, diga qual ação prefere.
+
