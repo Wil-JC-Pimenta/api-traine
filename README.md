@@ -16,6 +16,24 @@ O sistema fornece uma API REST para gerenciamento de alunos, agendamentos e aute
 
 ## 2. Arquitetura e Estrutura
 
+# Trainer API (api)
+
+Este documento descreve o estado atual do projeto, arquitetura, dependências, execução local e decisões técnicas. É escrito para desenvolvedores e avaliadores técnicos.
+
+---
+
+## 1. Visão Geral do Projeto
+
+O sistema fornece uma API REST para gerenciamento de alunos, agendamentos e autenticação de usuários para um contexto de treinamentos/aulas.
+
+- Problema que resolve: oferece operações CRUD para alunos e agendamentos, além de autenticação baseada em JWT, permitindo que front-ends ou consumidores integrem funcionalidades de agendamento.
+- Objetivo: ser um backend RESTful simples e extensível para gerenciar agendamentos e usuários.
+- Contexto de uso: API HTTP/JSON, destinada a ser consumida por UI web/mobile ou testes automatizados.
+
+---
+
+## 2. Arquitetura e Estrutura
+
 Arquitetura adotada
 - Aplicação monolítica construída com Spring Boot.
 - Padrão em camadas: Controller → Service → Repository, com DTOs e Entities para transporte e persistência.
@@ -85,7 +103,6 @@ Exemplos de endpoint:
 - GET `/api/alunos/{cpf}`
 - Exemplo: `/api/alunos/12345678900`
 
-
 ---
 
 ## 5. Segurança
@@ -122,7 +139,6 @@ Observações e recomendações
   - `springdoc.swagger-ui.path=/swagger-ui.html`
 
 - A UI do Swagger normalmente estará em `http://localhost:8081/swagger-ui.html` após inicializar a aplicação.
-- Fluxo de teste: registrar → login → usar token no header `Authorization: Bearer <token>` para endpoints protegidos.
 
 ---
 
