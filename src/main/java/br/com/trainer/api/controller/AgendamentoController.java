@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
@@ -21,36 +20,51 @@ public class AgendamentoController {
     }
 
     @PostMapping
-    public ResponseEntity<Agendamento> agendarAula(@RequestBody AgendamentoDTO dto) {
+    public ResponseEntity<AgendamentoDTO> criar(
+            @RequestBody AgendamentoDTO dto
+    ) {
         Agendamento agendamento = agendamentoService.criarAgendamento(dto);
-        return ResponseEntity.ok(agendamento);
+        return ResponseEntity.ok(mapToDTO(agendamento));
     }
 
     @GetMapping
-    public ResponseEntity<List<Agendamento>> buscarAgendamentos(
-            @RequestParam("start") String start,
-            @RequestParam("end") String end) {
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-            LocalDateTime startDate = LocalDateTime.parse(start, formatter);
-            LocalDateTime endDate = LocalDateTime.parse(end, formatter);
+    public ResponseEntity<List<AgendamentoDTO>> buscarPorPeriodo(
+            @RequestParam LocalDateTime start,
+            @RequestParam LocalDateTime end
+    ) {
+        List<AgendamentoDTO> lista = agendamentoService
+                .buscarPorPeriodo(start, end)
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
 
-            List<Agendamento> agendamentos = agendamentoService.buscarAgendamentos(startDate, endDate);
-            return ResponseEntity.ok(agendamentos);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
+        return ResponseEntity.ok(lista);
     }
 
-    @PutMapping("/atualizar")
-    public ResponseEntity<Agendamento> atualizarAgendamento(@RequestBody AgendamentoDTO dto) {
+    @PutMapping("/{id}")
+    public ResponseEntity<AgendamentoDTO> atualizar(
+            @PathVariable Long id,
+            @RequestBody AgendamentoDTO dto
+    ) {
+        dto.setId(id);
         Agendamento agendamento = agendamentoService.atualizarAgendamento(dto);
-        return ResponseEntity.ok(agendamento);
+        return ResponseEntity.ok(mapToDTO(agendamento));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletarAgendamento(@PathVariable Long id) {
+    public ResponseEntity<Void> deletar(@PathVariable Long id) {
         agendamentoService.deletarAgendamento(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ===== Mapper simples (pode virar classe depois) =====
+    private AgendamentoDTO mapToDTO(Agendamento agendamento) {
+        AgendamentoDTO dto = new AgendamentoDTO();
+        dto.setId(agendamento.getId());
+        dto.setAlunoCpf(agendamento.getAluno().getCpf());
+        dto.setDataHora(agendamento.getDataHora());
+        dto.setValor(agendamento.getValor());
+        dto.setDescricao(agendamento.getDescricao());
+        return dto;
     }
 }

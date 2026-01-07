@@ -9,15 +9,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.web.cors.CorsConfiguration;
 
 @Configuration
 @EnableWebSecurity
@@ -26,51 +25,84 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsServiceImpl userDetailsService;
 
-    public SecurityConfig(JwtTokenProvider jwtTokenProvider, UserDetailsServiceImpl userDetailsService) {
+    public SecurityConfig(JwtTokenProvider jwtTokenProvider,
+                          UserDetailsServiceImpl userDetailsService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userDetailsService = userDetailsService;
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
-                .csrf(csrf -> csrf.disable())  // Desativa CSRF
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // Sem estado
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()  // Acesso público
-                        .anyRequest().authenticated()  // Autenticação necessária
+                // 🔐 API stateless com JWT
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+
+                // CORS
                 .cors(cors -> cors.configurationSource(request -> {
-                    var source = new org.springframework.web.cors.CorsConfiguration();
-                    source.setAllowCredentials(true);
-                    source.addAllowedOriginPattern("*");  // Ajuste conforme necessário
-                    source.addAllowedHeader("*");
-                    source.addAllowedMethod(HttpMethod.GET);
-                    source.addAllowedMethod(HttpMethod.POST);
-                    source.addAllowedMethod(HttpMethod.PUT);
-                    source.addAllowedMethod(HttpMethod.DELETE);
-                    return source;
+                    CorsConfiguration config = new CorsConfiguration();
+                    config.setAllowCredentials(true);
+                    config.addAllowedOriginPattern("*");
+                    config.addAllowedHeader("*");
+                    config.addAllowedMethod("*");
+                    return config;
                 }))
-                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);  // Filtro JWT
+
+                // Regras de acesso
+                .authorizeHttpRequests(auth -> auth
+
+                        // Autenticação
+                        .requestMatchers("/auth/**").permitAll()
+
+                        // Swagger / OpenAPI
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/api-docs/**"
+                        ).permitAll()
+
+                        //  Endpoints públicos (AJUSTE CONFORME NECESSÁRIO)
+                        .requestMatchers(
+                                HttpMethod.GET, "/agendamentos/**"
+                        ).permitAll()
+
+                        //  Todo o resto exige JWT
+                        .anyRequest().authenticated()
+                )
+
+                // Filtro JWT
+                .addFilterBefore(jwtAuthenticationFilter(),
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    // Password Encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();  // Codificador de senhas
+        return new BCryptPasswordEncoder();
     }
 
+    // Filtro JWT
     @Bean
     public Filter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService);  // Filtro de autenticação JWT
+        return new JwtAuthenticationFilter(jwtTokenProvider, userDetailsService);
     }
 
+    // AuthenticationManager (Spring Security 6)
     @Bean
-    public AuthenticationManager authManager(HttpSecurity http) throws Exception {
-        AuthenticationManagerBuilder authenticationManagerBuilder =
+    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+        AuthenticationManagerBuilder builder =
                 http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
-        return authenticationManagerBuilder.build();
+
+        builder
+                .userDetailsService(userDetailsService)
+                .passwordEncoder(passwordEncoder());
+
+        return builder.build();
     }
 }
