@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.lang.NonNull;
 
 @Service
 public class AlunoService {
@@ -15,6 +16,7 @@ public class AlunoService {
     private AlunoRepository alunoRepository;
 
     public Aluno criarAluno(Aluno aluno) {
+        java.util.Objects.requireNonNull(aluno, "Aluno é obrigatório");
         return alunoRepository.save(aluno);
     }
 
@@ -22,11 +24,13 @@ public class AlunoService {
         return alunoRepository.findAll();
     }
 
-    public Optional<Aluno> buscarPorId(Long id) {
+    public Optional<Aluno> buscarPorId(@NonNull Long id) {
         return alunoRepository.findById(id);
     }
 
-    public Aluno atualizarAluno(Long id, Aluno alunoAtualizado) {
+    public Aluno atualizarAluno(@NonNull Long id, Aluno alunoAtualizado) {
+        java.util.Objects.requireNonNull(id, "Aluno id é obrigatório");
+
         Aluno aluno = alunoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Aluno não encontrado"));
 
@@ -37,7 +41,8 @@ public class AlunoService {
         return alunoRepository.save(aluno);
     }
 
-    public void deletarAluno(Long id) {
+    public void deletarAluno(@NonNull Long id) {
+        java.util.Objects.requireNonNull(id, "Aluno id é obrigatório");
         alunoRepository.deleteById(id);
     }
 }

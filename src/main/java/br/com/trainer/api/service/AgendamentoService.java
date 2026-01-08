@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import org.springframework.lang.NonNull;
 
 @Service
 public class AgendamentoService {
@@ -51,8 +53,10 @@ public class AgendamentoService {
 
     public Agendamento atualizarAgendamento(AgendamentoDTO dto) {
 
-        Agendamento agendamento = agendamentoRepository.findById(dto.getId())
-                .orElseThrow(() -> new RuntimeException("Agendamento não encontrado"));
+    Long id = Objects.requireNonNull(dto.getId(), "Agendamento id é obrigatório");
+
+    Agendamento agendamento = agendamentoRepository.findById(id)
+        .orElseThrow(() -> new RuntimeException("Agendamento não encontrado"));
 
         Aluno aluno = alunoRepository.findByCpf(dto.getAlunoCpf())
                 .orElseThrow(() -> new RuntimeException("Aluno não encontrado"));
@@ -65,7 +69,8 @@ public class AgendamentoService {
         return agendamentoRepository.save(agendamento);
     }
 
-    public void deletarAgendamento(Long id) {
+    public void deletarAgendamento(@NonNull Long id) {
+        java.util.Objects.requireNonNull(id, "Agendamento id é obrigatório");
         agendamentoRepository.deleteById(id);
     }
 }

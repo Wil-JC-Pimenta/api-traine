@@ -11,10 +11,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import br.com.trainer.api.security.JwtTokenProvider;
 
-import java.util.Date;
+
 
 @Service
 public class AuthService {
@@ -28,8 +27,11 @@ public class AuthService {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    private final String jwtSecret = "suaChaveSecretaAqui";
-    private final long jwtExpirationMs = 86400000; // 1 dia em milissegundos
+    private final JwtTokenProvider jwtTokenProvider;
+
+    public AuthService(JwtTokenProvider jwtTokenProvider) {
+        this.jwtTokenProvider = jwtTokenProvider;
+    }
 
     // Método de autenticação
     public LoginResponse authenticateUser(LoginRequest loginRequest) {
@@ -40,7 +42,7 @@ public class AuthService {
                 )
         );
 
-        String token = generateJwtToken(authentication);
+        String token = jwtTokenProvider.createToken(authentication.getName());
         return new LoginResponse(token);
     }
 
@@ -60,15 +62,5 @@ public class AuthService {
                 userDto.getEmail());
 
         usuarioRepository.save(user);
-    }
-
-    // Gera o token JWT
-    private String generateJwtToken(Authentication authentication) {
-        return Jwts.builder()
-                .setSubject(authentication.getName())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
-                .compact();
     }
 }
