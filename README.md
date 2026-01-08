@@ -1,24 +1,18 @@
-# Trainer API (api)
+# Trainer API — Arquitetura e Guia do Arquiteto
 
-Este documento descreve o estado atual do projeto, arquitetura, dependências, execução local e decisões técnicas. É escrito para desenvolvedores e avaliadores técnicos.
+Este README é um documento de arquitetura para desenvolvedores e arquitetos: descreve a arquitetura, decisões técnicas, modelos de dados (MER), diagramas UML (textuais/PlantUML), estado atual do projeto, como executar localmente, e observações importantes sobre segurança e qualidade.
 
----
-
-## 1. Visão Geral do Projeto
-
-O sistema fornece uma API REST para gerenciamento de alunos, agendamentos e autenticação de usuários para um contexto de treinamentos/aulas.
-
-- Problema que resolve: oferece operações CRUD para alunos e agendamentos, além de autenticação baseada em JWT, permitindo que front-ends ou consumidores integrem funcionalidades de agendamento.
-- Objetivo: ser um backend RESTful simples e extensível para gerenciar agendamentos e usuários.
-- Contexto de uso: API HTTP/JSON, destinada a ser consumida por UI web/mobile ou testes automatizados.
-
----
-
-## 2. Arquitetura e Estrutura
-
-# Trainer API (api)
-
-Este documento descreve o estado atual do projeto, arquitetura, dependências, execução local e decisões técnicas. É escrito para desenvolvedores e avaliadores técnicos.
+## Índice
+- Visão geral
+- Arquitetura (componentes)
+- Diagramas (PlantUML textual)
+- Modelo de Dados (MER)
+- Fluxos principais (sequência)
+- Estado atual do projeto
+- Como executar (dev / testes / produção)
+- Qualidade, testes e CI
+- Segurança e segredos
+- Próximos passos e riscos conhecidos
 
 ---
 
@@ -202,20 +196,28 @@ Configuração adicional
 
 ---
 
-## 10. Próximos Passos / Roadmap (prioridades)
+## Próximos passos recomendados (arquitetura)
 
-Correções e consistência
-- Corrigir `AlunoRepository` generic type: `Aluno` tem `@Id String cpf` mas repositório declara `JpaRepository<Aluno, Long>` — ajustar para `JpaRepository<Aluno, String>`.
-- Harmonizar nomes de propriedades JWT (`jwt.expiration-ms` vs `jwt.expirationTime`) e garantir leitura consistente das configurações.
-- Externalizar JWT secret para variáveis de ambiente/secret manager.
-
-Qualidade e testes
-- Adicionar testes unitários para services (validations e exceções) e testes de integração para endpoints protegidos.
-- Configurar CI (build + tests).
-
-Segurança e produção
-- Rotação e armazenamento seguro de segredos; política de expiração/refresh de tokens se necessário; proteção contra brute-force no endpoint de login.
+1. Corrigir inconsistência de tipo do ID de `Aluno` (Repository + Controllers + DTOs) — usar `String cpf` como PK e ajustar endpoints para receber `cpf`.
+2. Adicionar testes de unidade para Services (AlunoService, AgendamentoService, AuthService) cobrindo validações e exceções.
+3. Cobertura de integração para endpoints protegidos, incluindo geração/validação de JWT.
+4. Automatizar CI (GitHub Actions) para build/test e análise estática.
+5. Introduzir OpenAPI/contract-first checks em PRs para evitar regressões em API pública.
 
 ---
----
-<<<<<<< HEAD
+
+## Anexos úteis
+
+- Arquivos de interesse:
+  - `src/main/java/br/com/trainer/api/entity/*` — entidades
+  - `src/main/java/br/com/trainer/api/controller/*` — controllers
+  - `src/main/java/br/com/trainer/api/service/*` — services
+  - `src/main/java/br/com/trainer/api/repository/*` — repositories
+  - `src/main/java/br/com/trainer/api/security/*` — JWT provider/filter
+  - `src/main/resources/application.properties` — configuração padrão
+
+Se quiser, eu gero também uma imagem PNG dos diagramas PlantUML (preciso de um servidor PlantUML ou gerar localmente). Posso também abrir issues/PRs para:
+- corrigir `AlunoRepository` generic type;
+- ajustar controllers do recurso `Aluno` para usar `cpf`;
+- adicionar `application-test.properties` com valores de exemplo para CI.
+
