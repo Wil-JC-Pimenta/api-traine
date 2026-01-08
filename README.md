@@ -119,6 +119,29 @@ Observações e recomendações
 - O segredo do JWT (`jwt.secret`) atualmente está em `application.properties` para desenvolvimento; não deixe segredos no repositório em produção — use variáveis de ambiente/secret manager.
 - Verificar size/força da key para algoritmo HMAC (jjwt `Keys.hmacShaKeyFor(...)`).
 
+Gerando um segredo JWT seguro
+
+- Recomenda-se usar uma chave HMAC com pelo menos 256 bits. Uma forma simples de gerar um segredo seguro (base64) no terminal:
+
+  ```bash
+  # OpenSSL (gera 32 bytes e codifica em base64) — resultado pode ser usado como jwt.secret
+  openssl rand -base64 32
+
+  # Python — alternativa portátil
+  python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+  ```
+
+- Como usar localmente (não commitar o valor):
+
+  ```bash
+  # exporte a variável e inicie a aplicação (exemplo de uso local)
+  export JWT_SECRET="<valor_gerado>"
+  # executar com propriedade sobrescrevendo o arquivo
+  mvn -Djwt.secret="$JWT_SECRET" -Dspring-boot.run.profiles=dev spring-boot:run
+  ```
+
+- Em pipelines/produção, armazene a chave em um secret manager (Azure Key Vault, AWS Secrets Manager, etc.) e injete-a como variável de ambiente ou secret no contêiner. Nunca deixe `jwt.secret` com um valor curto ou a string placeholder no repositório.
+
 ---
 
 ## 6. Tratamento de Erros e Validações
@@ -194,4 +217,5 @@ Segurança e produção
 - Rotação e armazenamento seguro de segredos; política de expiração/refresh de tokens se necessário; proteção contra brute-force no endpoint de login.
 
 ---
-
+---
+<<<<<<< HEAD

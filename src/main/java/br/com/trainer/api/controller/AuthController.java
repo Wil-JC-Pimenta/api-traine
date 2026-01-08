@@ -3,7 +3,6 @@ package br.com.trainer.api.controller;
 import br.com.trainer.api.dto.LoginRequest;
 import br.com.trainer.api.dto.LoginResponse;
 import br.com.trainer.api.dto.UserDTO;
-import br.com.trainer.api.dto.UserDTO;
 import br.com.trainer.api.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
