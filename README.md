@@ -1,223 +1,256 @@
-# Trainer API — Arquitetura e Guia do Arquiteto
+=# Trainer API — Arquitetura 
 
-Este README é um documento de arquitetura para desenvolvedores e arquitetos: descreve a arquitetura, decisões técnicas, modelos de dados (MER), diagramas UML (textuais/PlantUML), estado atual do projeto, como executar localmente, e observações importantes sobre segurança e qualidade.
+Este documento descreve a arquitetura, decisões técnicas, modelos de dados, diagramas, estado atual do projeto e instruções de execução da API Trainer.
 
 ## Índice
-- Visão geral
-- Arquitetura (componentes)
-- Diagramas (PlantUML textual)
-- Modelo de Dados (MER)
-- Fluxos principais (sequência)
-- Estado atual do projeto
-- Como executar (dev / testes / produção)
-- Qualidade, testes e CI
-- Segurança e segredos
-- Próximos passos e riscos conhecidos
+- [Visão Geral](#visão-geral)
+- [Arquitetura](#arquitetura)
+- [Tecnologias](#tecnologias)
+- [Funcionalidades](#funcionalidades)
+- [Segurança](#segurança)
+- [Tratamento de Erros](#tratamento-de-erros)
+- [Documentação da API](#documentação-da-api)
+- [Como Executar](#como-executar)
+- [Boas Práticas](#boas-práticas)
+- [Próximos Passos](#próximos-passos)
 
 ---
 
-## 1. Visão Geral do Projeto
+## Visão Geral
 
-O sistema fornece uma API REST para gerenciamento de alunos, agendamentos e autenticação de usuários para um contexto de treinamentos/aulas.
+Sistema de gerenciamento de alunos e agendamentos com autenticação via JWT. Fornece uma API REST para operações CRUD e integração com front-ends web ou mobile.
 
-- Problema que resolve: oferece operações CRUD para alunos e agendamentos, além de autenticação baseada em JWT, permitindo que front-ends ou consumidores integrem funcionalidades de agendamento.
-- Objetivo: ser um backend RESTful simples e extensível para gerenciar agendamentos e usuários.
-- Contexto de uso: API HTTP/JSON, destinada a ser consumida por UI web/mobile ou testes automatizados.
+**Objetivo:** Backend RESTful simples e extensível para gerenciar agendamentos e usuários.
 
----
-
-## 2. Arquitetura e Estrutura
-
-Arquitetura adotada
-- Aplicação monolítica construída com Spring Boot.
-- Padrão em camadas: Controller → Service → Repository, com DTOs e Entities para transporte e persistência.
-
-Separação de camadas
-- Controller: expõe endpoints HTTP e mapeia requests/responses.
-- Service: contém regras de negócio e validações de domínio (validação de nulidade e verificação de existência de recursos).
-- Repository: abstração de acesso a dados via Spring Data JPA.
-- DTO: objetos de transferência usados nos endpoints.
-- Entity: modelos JPA/Hibernate persistidos no banco.
-
-Padrões e decisões relevantes
-- Validação e decisões de nulidade centralizadas na camada Service (ex.: `Objects.requireNonNull(...)`).
-- Uso de `Optional` nos repositórios para representar ausência de recurso.
-- Exceções de domínio (`ResourceNotFoundException`) para recursos inexistentes, tratadas por `GlobalExceptionHandler`.
-
-Observações de consistência
-- Algumas inconsistências detectadas no código (ver seção "Próximos Passos"). Elas não são inventadas — constam do estado atual do projeto.
+**Contexto de uso:** API HTTP/JSON para consumo por interfaces web, mobile ou testes automatizados.
 
 ---
 
-## 3. Tecnologias Utilizadas
+## Arquitetura
 
-- Linguagem: Java 17
-- Frameworks: Spring Boot 3.1.x (Web, Data JPA, Security, Validation)
-- Persistência: PostgreSQL (driver `org.postgresql:postgresql`)
-- JWT: jjwt (io.jsonwebtoken, versão 0.11.5)
-- Documentação: Springdoc OpenAPI / Swagger (`springdoc-openapi-starter-webmvc-ui`)
-- Build: Maven
-- Testes: `spring-boot-starter-test`, `spring-security-test`
-- Utilitários: Lombok (dependência opcional presente)
+### Estrutura em Camadas
 
----
+Arquitetura monolítica baseada em Spring Boot seguindo o padrão Controller → Service → Repository.
 
-## 4. Funcionalidades Principais
+**Camadas:**
+- **Controller:** Expõe endpoints HTTP e mapeia requests/responses
+- **Service:** Regras de negócio e validações de domínio
+- **Repository:** Abstração de acesso a dados via Spring Data JPA
+- **DTO:** Objetos de transferência para comunicação com clientes
+- **Entity:** Modelos JPA persistidos no banco de dados
 
-Endpoints implementados (resumo):
+### Decisões Técnicas
 
-Autenticação
-- POST `/api/auth/login` — autentica usuário e retorna JWT (LoginRequest → LoginResponse)
-- POST `/api/auth/register` — registra novo usuário (UserDTO)
-
-Alunos
-- GET `/api/alunos` — listar todos (requere autenticação conforme `SecurityConfig`)
-- GET `/api/alunos/{id}` — buscar por id (retorna 200 ou 404)
-- POST `/api/alunos` — criar aluno
-- PUT `/api/alunos/{id}` — atualizar aluno (service valida id)
-- DELETE `/api/alunos/{id}` — deletar aluno (service valida id)
-
-Agendamentos
-- POST `/agendamentos` — criar agendamento
-- GET `/agendamentos?start=&end=` — buscar por período (GET público conforme config)
-- PUT `/agendamentos/{id}` — atualizar agendamento
-- DELETE `/agendamentos/{id}` — deletar agendamento
-
-Regras de negócio notáveis
-- Serviços lançam `ResourceNotFoundException` quando não localizam recursos.
-- `DataInitializer` cria um usuário `admin` por padrão (para facilitar testes locais).
+- Validação centralizada na camada Service usando `Objects.requireNonNull()`
+- Uso de `Optional` nos repositórios para representar ausência de recursos
+- Exceções de domínio (`ResourceNotFoundException`) tratadas por `GlobalExceptionHandler`
+- Autenticação stateless com JWT
 
 ---
 
-## Identificador de Aluno
+## Tecnologias
 
-O recurso Aluno é identificado de forma única pelo CPF, representado como uma String contendo 11 dígitos numéricos, utilizado como chave primária e como parâmetro nas rotas da API.
-
-Exemplos de endpoint:
-- GET `/api/alunos/{cpf}`
-- Exemplo: `/api/alunos/12345678900`
-
----
-
-## 5. Segurança
-
-Resumo da implementação
-- Autenticação baseada em JWT. Componentes:
-  - `JwtTokenProvider` — cria e valida tokens JWT.
-  - `JwtAuthenticationFilter` — extrai token do header `Authorization` e popula `SecurityContext`.
-  - `UserDetailsServiceImpl` — carrega usuário do banco e retorna UserDetails.
-  - `SecurityConfig` — configura SecurityFilterChain (stateless, permissões e filtros).
-- Senhas armazenadas com BCrypt (`PasswordEncoder` configurado).
-
-Observações e recomendações
-- O segredo do JWT (`jwt.secret`) atualmente está em `application.properties` para desenvolvimento; não deixe segredos no repositório em produção — use variáveis de ambiente/secret manager.
-- Verificar size/força da key para algoritmo HMAC (jjwt `Keys.hmacShaKeyFor(...)`).
-
-Gerando um segredo JWT seguro
-
-- Recomenda-se usar uma chave HMAC com pelo menos 256 bits. Uma forma simples de gerar um segredo seguro (base64) no terminal:
-
-  ```bash
-  # OpenSSL (gera 32 bytes e codifica em base64) — resultado pode ser usado como jwt.secret
-  openssl rand -base64 32
-
-  # Python — alternativa portátil
-  python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
-  ```
-
-- Como usar localmente (não commitar o valor):
-
-  ```bash
-  # exporte a variável e inicie a aplicação (exemplo de uso local)
-  export JWT_SECRET="<valor_gerado>"
-  # executar com propriedade sobrescrevendo o arquivo
-  mvn -Djwt.secret="$JWT_SECRET" -Dspring-boot.run.profiles=dev spring-boot:run
-  ```
-
-- Em pipelines/produção, armazene a chave em um secret manager (Azure Key Vault, AWS Secrets Manager, etc.) e injete-a como variável de ambiente ou secret no contêiner. Nunca deixe `jwt.secret` com um valor curto ou a string placeholder no repositório.
+| Categoria | Tecnologia |
+|-----------|------------|
+| Linguagem | Java 17 |
+| Framework | Spring Boot 3.1.x (Web, Data JPA, Security, Validation) |
+| Banco de Dados | PostgreSQL |
+| Autenticação | JWT (io.jsonwebtoken 0.11.5) |
+| Documentação | Springdoc OpenAPI / Swagger |
+| Build | Maven |
+| Testes | spring-boot-starter-test, spring-security-test |
+| Utilitários | Lombok |
 
 ---
 
-## 6. Tratamento de Erros e Validações
+## Funcionalidades
 
-- Validação de entrada: centralizada em Services (ex.: `Objects.requireNonNull(...)` que materializa ids e evita passar valores nulos aos repositórios).
-- Exceções de domínio:
-  - `ResourceNotFoundException` → lançado quando um recurso não existe; mapeado para HTTP 404.
-  - `IllegalArgumentException` / `NullPointerException` → mapeados para HTTP 400 (Bad Request) pelo `GlobalExceptionHandler`.
-  - `GlobalExceptionHandler` também mapeia `Exception` para 500 (Internal Server Error).
-- Formato de erro padrão: `ErrorResponse` (timestamp, status, error, message, path) para respostas consistentes.
+### Autenticação
+```
+POST /api/auth/login     - Autenticação e geração de JWT
+POST /api/auth/register  - Registro de novo usuário
+```
+
+### Alunos
+```
+GET    /api/alunos       - Listar todos os alunos
+GET    /api/alunos/{cpf} - Buscar aluno por CPF
+POST   /api/alunos       - Criar novo aluno
+PUT    /api/alunos/{cpf} - Atualizar aluno
+DELETE /api/alunos/{cpf} - Deletar aluno
+```
+
+**Identificador:** O CPF é usado como chave primária (String com 11 dígitos numéricos).
+
+**Exemplo:** `GET /api/alunos/12345678900`
+
+### Agendamentos
+```
+POST   /agendamentos         - Criar agendamento
+GET    /agendamentos         - Buscar por período (query params: start, end)
+PUT    /agendamentos/{id}    - Atualizar agendamento
+DELETE /agendamentos/{id}    - Deletar agendamento
+```
+
+### Regras de Negócio
+
+- Services lançam `ResourceNotFoundException` para recursos não encontrados
+- `DataInitializer` cria usuário padrão `admin` com senha `admin123` para facilitar testes locais
 
 ---
 
-## 7. Documentação da API
+## Segurança
 
-- Springdoc OpenAPI está configurado. As propriedades relevantes em `application.properties`:
-  - `springdoc.api-docs.path=/api-docs`
-  - `springdoc.swagger-ui.path=/swagger-ui.html`
+### Implementação
 
-- A UI do Swagger normalmente estará em `http://localhost:8081/swagger-ui.html` após inicializar a aplicação.
+**Componentes:**
+- `JwtTokenProvider` — Criação e validação de tokens JWT
+- `JwtAuthenticationFilter` — Extração do token do header `Authorization`
+- `UserDetailsServiceImpl` — Carregamento de usuários do banco
+- `SecurityConfig` — Configuração de SecurityFilterChain stateless
 
----
+**Senha:** Armazenamento com BCrypt via `PasswordEncoder`.
 
-## 8. Como Executar o Projeto (local)
+### Geração de Segredo JWT
 
-Pré-requisitos
-- Java 17, Maven 3.x, PostgreSQL
-
-Configuração do banco
-- Banco padrão configurado (em `src/main/resources/application.properties`):
-  - URL: `jdbc:postgresql://localhost:5432/dbtrainer`
-  - User: `postgres` / Password: `postgres`
-- Crie o banco localmente, por ex.: `createdb -U postgres dbtrainer`.
-
-Executando
+Recomenda-se chave HMAC com mínimo de 256 bits:
 ```bash
-# rodar em modo dev
-mvn -DskipTests=true spring-boot:run
+# OpenSSL
+openssl rand -base64 32
 
-# empacotar
-mvn -DskipTests=true package
+# Python
+python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+```
+
+### Uso em Desenvolvimento
+```bash
+export JWT_SECRET="<valor_gerado>"
+mvn -Djwt.secret="$JWT_SECRET" spring-boot:run
+```
+
+### Produção
+
+⚠️ **IMPORTANTE:** Nunca commite segredos no repositório. Use:
+- Variáveis de ambiente
+- Secret managers (Azure Key Vault, AWS Secrets Manager, etc.)
+- Injeção de secrets em contêineres
+
+---
+
+## Tratamento de Erros
+
+### Validações
+
+Centralizadas nos Services com `Objects.requireNonNull()` para garantir contratos explícitos.
+
+### Exceções
+
+| Exceção | Código HTTP | Uso |
+|---------|-------------|-----|
+| `ResourceNotFoundException` | 404 | Recurso não encontrado |
+| `IllegalArgumentException` | 400 | Argumentos inválidos |
+| `NullPointerException` | 400 | Valores nulos não permitidos |
+| `Exception` | 500 | Erro interno do servidor |
+
+### Formato de Resposta
+```json
+{
+  "timestamp": "2026-01-08T10:30:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Aluno não encontrado",
+  "path": "/api/alunos/12345678900"
+}
+```
+
+---
+
+## Documentação da API
+
+**Swagger UI:** `http://localhost:8081/swagger-ui.html`
+
+**OpenAPI Docs:** `http://localhost:8081/api-docs`
+
+Configuração em `application.properties`:
+```properties
+springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+```
+
+---
+
+## Como Executar
+
+### Pré-requisitos
+
+- Java 17
+- Maven 3.x
+- PostgreSQL
+
+### Configuração do Banco
+
+Configuração padrão em `application.properties`:
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/dbtrainer
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+```
+
+Criar banco:
+```bash
+createdb -U postgres dbtrainer
+```
+
+### Execução
+```bash
+# Modo desenvolvimento
+mvn spring-boot:run
+
+# Build e execução
+mvn package
 java -jar target/api-0.0.1-SNAPSHOT.jar
 ```
 
-Configuração adicional
-- Porta: `server.port=8081` (definida em `application.properties`).
-- `DataInitializer` cria usuário `admin` localmente (username `admin`, senha `admin123`) se não existir.
+**Porta:** A aplicação inicia na porta `8081` (configurável em `application.properties`).
+
+**Usuário padrão:** `admin` / `admin123` (criado automaticamente em desenvolvimento).
 
 ---
 
-## 9. Boas Práticas Adotadas
+## Boas Práticas
 
-- Separação de responsabilidades (Controller/Service/Repository/DTO/Entity).
-- Validação de nulidade no Service com `Objects.requireNonNull(...)` (mantém contrato do serviço explícito).
-- Uso de exceções de domínio e `@RestControllerAdvice` para mapear erros para códigos HTTP apropriados.
-- Senhas criptografadas com BCrypt e autenticação stateless via JWT.
-- Documentação via OpenAPI/Swagger integrada.
-
----
-
-## Próximos passos recomendados (arquitetura)
-
-1. Corrigir inconsistência de tipo do ID de `Aluno` (Repository + Controllers + DTOs) — usar `String cpf` como PK e ajustar endpoints para receber `cpf`.
-2. Adicionar testes de unidade para Services (AlunoService, AgendamentoService, AuthService) cobrindo validações e exceções.
-3. Cobertura de integração para endpoints protegidos, incluindo geração/validação de JWT.
-4. Automatizar CI (GitHub Actions) para build/test e análise estática.
-5. Introduzir OpenAPI/contract-first checks em PRs para evitar regressões em API pública.
+- Separação clara de responsabilidades entre camadas
+- Validação explícita de nulidade nos Services
+- Exceções de domínio para tratamento de erros
+- Autenticação stateless via JWT
+- Senhas criptografadas com BCrypt
+- Documentação automatizada via OpenAPI/Swagger
+- Uso de DTOs para desacoplamento entre API e modelo de dados
 
 ---
 
-## Anexos úteis
+## Próximos Passos
 
-- Arquivos de interesse:
-  - `src/main/java/br/com/trainer/api/entity/*` — entidades
-  - `src/main/java/br/com/trainer/api/controller/*` — controllers
-  - `src/main/java/br/com/trainer/api/service/*` — services
-  - `src/main/java/br/com/trainer/api/repository/*` — repositories
-  - `src/main/java/br/com/trainer/api/security/*` — JWT provider/filter
-  - `src/main/resources/application.properties` — configuração padrão
+### Melhorias Técnicas
 
-Se quiser, eu gero também uma imagem PNG dos diagramas PlantUML (preciso de um servidor PlantUML ou gerar localmente). Posso também abrir issues/PRs para:
-- corrigir `AlunoRepository` generic type;
-- ajustar controllers do recurso `Aluno` para usar `cpf`;
-- adicionar `application-test.properties` com valores de exemplo para CI.
+1. Padronizar tipo de ID em `Aluno` (usar `String cpf` consistentemente em Repository, Controllers e DTOs)
+2. Implementar testes unitários para Services (AlunoService, AgendamentoService, AuthService)
+3. Adicionar testes de integração para endpoints protegidos
+4. Configurar CI/CD (GitHub Actions) para build, testes e análise estática
+5. Implementar validação de contratos OpenAPI em PRs
 
+### Arquivos Principais
+```
+src/main/java/br/com/trainer/api/
+├── entity/          # Entidades JPA
+├── controller/      # Controllers REST
+├── service/         # Regras de negócio
+├── repository/      # Repositórios JPA
+├── security/        # JWT Provider e Filtros
+└── dto/             # Data Transfer Objects
+
+src/main/resources/
+└── application.properties  # Configurações da aplicação
+```
+
+---
