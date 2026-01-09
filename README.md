@@ -1,256 +1,286 @@
-=# Trainer API — Arquitetura 
+# Trainer API
 
-Este documento descreve a arquitetura, decisões técnicas, modelos de dados, diagramas, estado atual do projeto e instruções de execução da API Trainer.
+Documentação técnica e operacional da API Trainer — backend RESTful desenvolvido com Java 17 e Spring Boot.
 
-## Índice
-- [Visão Geral](#visão-geral)
-- [Arquitetura](#arquitetura)
-- [Tecnologias](#tecnologias)
-- [Funcionalidades](#funcionalidades)
-- [Segurança](#segurança)
-- [Tratamento de Erros](#tratamento-de-erros)
-- [Documentação da API](#documentação-da-api)
-- [Como Executar](#como-executar)
-- [Boas Práticas](#boas-práticas)
-- [Próximos Passos](#próximos-passos)
+Sumário
+- **Visão Geral**
+- **Arquitetura**
+- **Diagramas (Mermaid)**
+- **API (endpoints, exemplos)**
+- **Segurança (JWT)**
+- **Qualidade & Manutenibilidade**
+- **Execução local & Configuração**
+- **Observabilidade & Logs**
+- **Roadmap / Próximos passos**
 
----
+Visão geral
+------------
+Trainer API é um serviço monolítico que expõe funcionalidades para gestão de alunos e agendamentos, com autenticação via JWT e documentação via OpenAPI/Swagger. O projeto está organizado segundo o padrão Controller → Service → Repository e usa PostgreSQL para persistência.
 
-## Visão Geral
+Arquitetura (resumo técnico)
+----------------------------
+Camadas
+- **Controller** — Recebe e valida requests HTTP, mapeia para DTOs e devolve responses (pacote `controller`).
+- **Service** — Regras de negócio, validações e orquestração de operações transacionais (pacote `service`).
+- **Repository** — Interface com o banco de dados via Spring Data JPA (pacote `repository`).
+- **Entity / DTO** — Entidades JPA persistidas (`entity`) e objetos de transferência (`dto`) para desacoplamento da API.
 
-Sistema de gerenciamento de alunos e agendamentos com autenticação via JWT. Fornece uma API REST para operações CRUD e integração com front-ends web ou mobile.
+Justificativas técnicas
+- Separação de camadas favorece testabilidade, manutenção e evolução independente da camada de persistência.
+- Uso de DTOs evita vazamento de entidades JPA para o cliente e facilita versionamento de API.
+- `Optional` em repositórios e `ResourceNotFoundException` centralizam tratamento de ausência de dados.
+- Autenticação stateless com JWT reduz estado no servidor e simplifica escalabilidade horizontal.
 
-**Objetivo:** Backend RESTful simples e extensível para gerenciar agendamentos e usuários.
+Fluxo de requisição (exemplo)
+1. `Controller` recebe HTTP request e converte para DTO.
+2. `Controller` chama `Service` apropriado para executar a operação.
+3. `Service` executa regras de negócio, valida entradas e interage com `Repository` para persistência.
+4. `Repository` acessa o banco (JPA/Hibernate) e retorna entidades.
+5. `Service` converte entidades para DTOs e retorna para o `Controller`.
+6. `Controller` constrói a `ResponseEntity` HTTP com código apropriado.
 
-**Contexto de uso:** API HTTP/JSON para consumo por interfaces web, mobile ou testes automatizados.
+Diagramas (Mermaid)
+-------------------
+1) Diagrama de classes (entidades principais e DTOs)
 
----
-
-## Arquitetura
-
-### Estrutura em Camadas
-
-Arquitetura monolítica baseada em Spring Boot seguindo o padrão Controller → Service → Repository.
-
-**Camadas:**
-- **Controller:** Expõe endpoints HTTP e mapeia requests/responses
-- **Service:** Regras de negócio e validações de domínio
-- **Repository:** Abstração de acesso a dados via Spring Data JPA
-- **DTO:** Objetos de transferência para comunicação com clientes
-- **Entity:** Modelos JPA persistidos no banco de dados
-
-### Decisões Técnicas
-
-- Validação centralizada na camada Service usando `Objects.requireNonNull()`
-- Uso de `Optional` nos repositórios para representar ausência de recursos
-- Exceções de domínio (`ResourceNotFoundException`) tratadas por `GlobalExceptionHandler`
-- Autenticação stateless com JWT
-
----
-
-## Tecnologias
-
-| Categoria | Tecnologia |
-|-----------|------------|
-| Linguagem | Java 17 |
-| Framework | Spring Boot 3.1.x (Web, Data JPA, Security, Validation) |
-| Banco de Dados | PostgreSQL |
-| Autenticação | JWT (io.jsonwebtoken 0.11.5) |
-| Documentação | Springdoc OpenAPI / Swagger |
-| Build | Maven |
-| Testes | spring-boot-starter-test, spring-security-test |
-| Utilitários | Lombok |
-
----
-
-## Funcionalidades
-
-### Autenticação
-```
-POST /api/auth/login     - Autenticação e geração de JWT
-POST /api/auth/register  - Registro de novo usuário
-```
-
-### Alunos
-```
-GET    /api/alunos       - Listar todos os alunos
-GET    /api/alunos/{cpf} - Buscar aluno por CPF
-POST   /api/alunos       - Criar novo aluno
-PUT    /api/alunos/{cpf} - Atualizar aluno
-DELETE /api/alunos/{cpf} - Deletar aluno
-```
-
-**Identificador:** O CPF é usado como chave primária (String com 11 dígitos numéricos).
-
-**Exemplo:** `GET /api/alunos/12345678900`
-
-### Agendamentos
-```
-POST   /agendamentos         - Criar agendamento
-GET    /agendamentos         - Buscar por período (query params: start, end)
-PUT    /agendamentos/{id}    - Atualizar agendamento
-DELETE /agendamentos/{id}    - Deletar agendamento
+```mermaid
+classDiagram
+    direction LR
+    Aluno <|-- AlunoDTO
+    Agendamento <|-- AgendamentoDTO
+    Usuario <|-- UserDTO
+    Agendamento "1" o-- "1" Aluno : pertence
+    Agendamento --> StatusAgendamento : status
+    class Aluno{
+      <<Entity>>
+      +String cpf
+    }
+    class Agendamento{
+      <<Entity>>
+      +Long id
+    }
+    class Usuario{
+      <<Entity>>
+      +Long id
+      +String username
+    }
+    class AlunoDTO{
+      <<DTO>>
+      +String cpf
+    }
+    class AgendamentoDTO{
+      <<DTO>>
+      +Long id
+    }
+    class UserDTO{
+      <<DTO>>
+      +String username
+    }
+    class StatusAgendamento{
+      <<Enum>>
+      +AGENDADO
+      +CANCELADO
+      +REALIZADO
+    }
 ```
 
-### Regras de Negócio
+2) Diagrama de sequência: autenticação JWT (resumido)
 
-- Services lançam `ResourceNotFoundException` para recursos não encontrados
-- `DataInitializer` cria usuário padrão `admin` com senha `admin123` para facilitar testes locais
-
----
-
-## Segurança
-
-### Implementação
-
-**Componentes:**
-- `JwtTokenProvider` — Criação e validação de tokens JWT
-- `JwtAuthenticationFilter` — Extração do token do header `Authorization`
-- `UserDetailsServiceImpl` — Carregamento de usuários do banco
-- `SecurityConfig` — Configuração de SecurityFilterChain stateless
-
-**Senha:** Armazenamento com BCrypt via `PasswordEncoder`.
-
-### Geração de Segredo JWT
-
-Recomenda-se chave HMAC com mínimo de 256 bits:
-```bash
-# OpenSSL
-openssl rand -base64 32
-
-# Python
-python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthController
+    participant AuthService
+    participant JwtTokenProvider
+    Client->>AuthController: POST /api/auth/login {username,password}
+    AuthController->>AuthService: validar credenciais
+    AuthService->>UserDetailsServiceImpl: loadUserByUsername
+    UserDetailsServiceImpl-->>AuthService: UserDetails
+    AuthService->>JwtTokenProvider: gerarToken(UserDetails)
+    JwtTokenProvider-->>AuthService: token JWT
+    AuthService-->>AuthController: LoginResponse{token,expires}
+    AuthController-->>Client: 200 OK {token}
 ```
 
-### Uso em Desenvolvimento
+3) MER (Modelo Entidade-Relacionamento) — resumo
+
+```mermaid
+erDiagram
+    ALUNO {
+      varchar cpf PK
+    }
+    USUARIO {
+      bigint id PK
+    }
+    AGENDAMENTO {
+      bigint id PK
+      varchar aluno_cpf FK
+      bigint usuario_id FK
+    }
+    AGENDAMENTO }o--|| ALUNO : pertence_a
+    AGENDAMENTO }o--|| USUARIO : criado_por
+```
+
+API — Endpoints principais
+--------------------------
+Observação: não assumimos endpoints além dos presentes no projeto. Abaixo está a listagem consolidada com o comportamento observado nos controladores.
+
+Auth
+- POST /api/auth/login — Autentica usuário e retorna JWT. Public.
+- POST /api/auth/register — Registra novo usuário (se implementado). Public.
+
+Alunos (prefixo `/api/alunos`)
+- GET /api/alunos — Listar todos os alunos. Requer autenticação.
+- GET /api/alunos/{cpf} — Obter aluno por CPF. Requer autenticação.
+- POST /api/alunos — Criar novo aluno. Requer autenticação.
+- PUT /api/alunos/{cpf} — Atualizar aluno. Requer autenticação.
+- DELETE /api/alunos/{cpf} — Deletar aluno. Requer autenticação.
+
+Agendamentos
+- POST /agendamentos — Criar agendamento. Requer autenticação.
+- GET /agendamentos — Buscar agendamentos por período (query params: `start`, `end`). Requer autenticação.
+- PUT /agendamentos/{id} — Atualizar agendamento. Requer autenticação.
+- DELETE /agendamentos/{id} — Deletar agendamento. Requer autenticação.
+
+Cabeçalho de autenticação
+- Use header `Authorization: Bearer <token>` para endpoints protegidos.
+
+Exemplos (JSON)
+
+- Login (request)
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+- Login (response)
+
+```json
+{
+  "token": "eyJhbGci...",
+  "type": "Bearer",
+  "expiresIn": 3600
+}
+```
+
+- Criar Aluno (request) — exemplo mínimo
+
+```json
+{
+  "cpf": "12345678900",
+  "nome": "João Silva"
+}
+```
+
+- Criar Agendamento (request) — exemplo mínimo
+
+```json
+{
+  "alunoCpf": "12345678900",
+  "data": "2026-01-15T10:30:00",
+  "descricao": "Aula de avaliação"
+}
+```
+
+Segurança — detalhes
+---------------------
+Fluxo de autenticação
+1. Cliente envia credenciais para `POST /api/auth/login`.
+2. `AuthController` delega validação ao `AuthService`.
+3. `AuthService` usa `UserDetailsServiceImpl` para carregar dados do usuário e valida a senha (BCrypt).
+4. Em caso de sucesso, `JwtTokenProvider` gera um token assinado e com tempo de expiração.
+5. Cliente envia token em `Authorization: Bearer <token>` nas requisições subsequentes.
+
+Papel e autorização
+- O projeto mantém autenticação com usuários; permissões/roles podem existir no modelo `Usuario` se implementadas, mas a configuração atual trabalha com autenticação stateless e filtro JWT (`JwtAuthenticationFilter`).
+
+Boas práticas adotadas
+- Senhas armazenadas com BCrypt via `PasswordEncoder`.
+- Tokens HMAC assinados; variável de configuração do segredo (`JWT_SECRET` / propriedade `jwt.secret`) deve ser mantida fora do código-fonte.
+- Filtro JWT antes da cadeia de segurança para validar token e popular `SecurityContext`.
+
+Qualidade e manutenibilidade
+----------------------------
+Padrões e princípios
+- Arquitetura em camadas (Controller/Service/Repository).
+- Uso de DTOs para desacoplamento da camada de persistência.
+- Tratamento global de exceções via `GlobalExceptionHandler`.
+- Uso de `Optional` e exceções de domínio (`ResourceNotFoundException`).
+- Princípios SOLID aplicados: responsabilidades separadas (`S`), abstração via interfaces de repositório (`D`), serviços coesos (`O`, `L`, `I` aplicados na modelagem de DTOs/entidades).
+
+Testes
+- O projeto inclui dependências de testes (`spring-boot-starter-test`, `spring-security-test`). Mantenha testes unitários para `Service` e testes de integração para fluxos críticos (auth, CRUD).
+
+Tratamento de erros
+- `GlobalExceptionHandler` traduz exceções de domínio para respostas HTTP padronizadas (timestamp, status, error, message, path).
+
+Execução local e configuração
+----------------------------
+Variáveis de ambiente e propriedades relevantes
+- `spring.datasource.url` — URL JDBC do PostgreSQL (ex.: `jdbc:postgresql://localhost:5432/dbtrainer`).
+- `spring.datasource.username` / `spring.datasource.password` — credenciais do banco.
+- `jwt.secret` ou `JWT_SECRET` — segredo HMAC para assinatura de JWT.
+- `server.port` — porta da aplicação (padrão usado: `8081`).
+- `spring.profiles.active` — perfil Spring (`dev`, `test`, `prod`), caso queira ativar comportamentos por perfil.
+
+Exemplos de execução
+
+Modo desenvolvimento (com variável de ambiente JWT secret):
+
 ```bash
 export JWT_SECRET="<valor_gerado>"
 mvn -Djwt.secret="$JWT_SECRET" spring-boot:run
 ```
 
-### Produção
+Build e execução do JAR:
 
-⚠️ **IMPORTANTE:** Nunca commite segredos no repositório. Use:
-- Variáveis de ambiente
-- Secret managers (Azure Key Vault, AWS Secrets Manager, etc.)
-- Injeção de secrets em contêineres
-
----
-
-## Tratamento de Erros
-
-### Validações
-
-Centralizadas nos Services com `Objects.requireNonNull()` para garantir contratos explícitos.
-
-### Exceções
-
-| Exceção | Código HTTP | Uso |
-|---------|-------------|-----|
-| `ResourceNotFoundException` | 404 | Recurso não encontrado |
-| `IllegalArgumentException` | 400 | Argumentos inválidos |
-| `NullPointerException` | 400 | Valores nulos não permitidos |
-| `Exception` | 500 | Erro interno do servidor |
-
-### Formato de Resposta
-```json
-{
-  "timestamp": "2026-01-08T10:30:00",
-  "status": 404,
-  "error": "Not Found",
-  "message": "Aluno não encontrado",
-  "path": "/api/alunos/12345678900"
-}
-```
-
----
-
-## Documentação da API
-
-**Swagger UI:** `http://localhost:8081/swagger-ui.html`
-
-**OpenAPI Docs:** `http://localhost:8081/api-docs`
-
-Configuração em `application.properties`:
-```properties
-springdoc.api-docs.path=/api-docs
-springdoc.swagger-ui.path=/swagger-ui.html
-```
-
----
-
-## Como Executar
-
-### Pré-requisitos
-
-- Java 17
-- Maven 3.x
-- PostgreSQL
-
-### Configuração do Banco
-
-Configuração padrão em `application.properties`:
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/dbtrainer
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-```
-
-Criar banco:
 ```bash
+mvn package -DskipTests
+java -jar target/api-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+```
+
+Configuração do banco (local):
+
+```bash
+# criar banco postgres local
 createdb -U postgres dbtrainer
 ```
 
-### Execução
+Observabilidade & Logs
+----------------------
+- O repositório contém a pasta `/logs` com arquivos de log (`api.log*`). Monitore esses arquivos para depuração e auditoria.
+- Visualizar logs em tempo real:
+
 ```bash
-# Modo desenvolvimento
-mvn spring-boot:run
-
-# Build e execução
-mvn package
-java -jar target/api-0.0.1-SNAPSHOT.jar
+tail -f logs/api.log
 ```
 
-**Porta:** A aplicação inicia na porta `8081` (configurável em `application.properties`).
+- Recomendação: configurar appenders (Logback/Log4j2) para rotação e nível por pacote em `application.properties`/`logback-spring.xml` conforme necessidade do ambiente.
 
-**Usuário padrão:** `admin` / `admin123` (criado automaticamente em desenvolvimento).
+Roadmap / Próximos passos (sugestões realistas)
+--------------------------------------------
+- API:
+  - Implementar paginação e filtragem nos endpoints de listagem.
+  - Versionamento de API (ex.: `/api/v1/...`).
+- Segurança:
+  - Implementar refresh token e revogação de tokens (se necessário).
+  - Aplicar roles/autorizações mais granulares por endpoint.
+- Observability:
+  - Adicionar métricas (Micrometer) e exportar para Prometheus/Grafana.
+  - Centralizar logs (ELK/EFK) em ambientes de produção.
+- Qualidade:
+  - Cobertura de testes automatizados (unit/integration).
+  - Pipelines CI com análise estática (SpotBugs, PMD) e testes.
 
----
+Referências rápidas
+- Swagger UI: http://localhost:8081/swagger-ui.html
+- OpenAPI: http://localhost:8081/api-docs
+- Código-fonte: consulte o pacote `br.com.trainer.api` em `src/main/java`.
 
-## Boas Práticas
-
-- Separação clara de responsabilidades entre camadas
-- Validação explícita de nulidade nos Services
-- Exceções de domínio para tratamento de erros
-- Autenticação stateless via JWT
-- Senhas criptografadas com BCrypt
-- Documentação automatizada via OpenAPI/Swagger
-- Uso de DTOs para desacoplamento entre API e modelo de dados
-
----
-
-## Próximos Passos
-
-### Melhorias Técnicas
-
-1. Padronizar tipo de ID em `Aluno` (usar `String cpf` consistentemente em Repository, Controllers e DTOs)
-2. Implementar testes unitários para Services (AlunoService, AgendamentoService, AuthService)
-3. Adicionar testes de integração para endpoints protegidos
-4. Configurar CI/CD (GitHub Actions) para build, testes e análise estática
-5. Implementar validação de contratos OpenAPI em PRs
-
-### Arquivos Principais
-```
-src/main/java/br/com/trainer/api/
-├── entity/          # Entidades JPA
-├── controller/      # Controllers REST
-├── service/         # Regras de negócio
-├── repository/      # Repositórios JPA
-├── security/        # JWT Provider e Filtros
-└── dto/             # Data Transfer Objects
-
-src/main/resources/
-└── application.properties  # Configurações da aplicação
-```
-
----
+Contribuição & Onboarding
+-------------------------
+- Para iniciar localmente: configurar PostgreSQL, exportar `JWT_SECRET`, executar `mvn spring-boot:run`.
+- Para novos desenvolvedores: foque em `service` para entender regras de negócio e `controller` para contratos de API; use `GlobalExceptionHandler` como referência de erros padronizados.
